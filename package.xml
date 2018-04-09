@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>nhk18_controller</name>
+  <name>nhk18_mr</name>
   <version>0.0.0</version>
-  <description>The nhk18_controller package</description>
+  <description>The nhk18_mr package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

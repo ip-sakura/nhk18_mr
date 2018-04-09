@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(nhk18_controller)
+project(nhk18_mr)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -200,5 +200,5 @@ include_directories(
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
-add_executable(nhk18_controller src/nhk18_controller.cpp)
-target_link_libraries(nhk18_controller ${catkin_LIBRARIES})
+add_executable(nhk18_mr src/nhk18_controller.cpp)
+target_link_libraries(nhk18_mr ${catkin_LIBRARIES})
