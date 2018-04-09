@@ -1,0 +1,5 @@
+<launch>
+  <group ns = "nhk18_controller">
+    <node pkg = "nhk18_controller" name = "controller" type = "nhk18_controller">
+  </group>
+</launch>
