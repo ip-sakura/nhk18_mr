@@ -2,6 +2,11 @@
 #include "sensor_msgs/Joy.h"
 #include "std_msgs/Int8.h"
 #include "std_msgs/Int16.h"
+#include "std_msgs/Int32MultiArray.h"
+#include "std_msgs/Int32.h"
+#include "std_msgs/Float64.h"
+#include <std_msgs/MultiArrayLayout.h>
+#include <std_msgs/MultiArrayDimension.h>
 
 #define STOP 0
 //足回り状態
@@ -13,11 +18,17 @@
 #define STPUP 1
 #define STPDW 2
 
+//エンコーダ用
+#define DELTA_L 0
+#define DELTA_R 1
+#define DGAP 2
+
 #define THRESHOLD 0.5
-#define TOPPOWER 90
+#define TOPPOWER 80
 #define LRGAP 5 //壁伝い走行用の回転差
 #define STPX 150//ラックを持ち上げる際の変位（mm）
 #define SUPRESS 0.1
+#define SUPRESS_COR 0.15 //補正用サプレッサー
 
 int status = STOP;//状態
 int status_buf = STOP;//直前の状態
@@ -25,16 +36,35 @@ int stp_status = STOP;//ステピの状態
 int stp_status_buf = STOP;//直前のステピの状態
 int r_ispushed,l_ispushed;
 int sw = 0;
-int span_ms = 2;//速度？積算のタイムスパン
+int span_ms = 1;//速度？積算のタイムスパン
 int cnt = 0;//タイムスパン用カウンタ
 
 float delta = 0.8;//PID制御用の係数 pgain
 
 int motorpw_l=0;
 int motorpw_r=0;
+int extra_correction = 0;//補正用
+float gap_ratio = 0;//エンコーダからとってきた差を割合で表す。
+bool vlr_max = 0; //=DELTA_L(0) or DELTA_R(1)で考える
 
 std_msgs::Int16 mpwsender_l,mpwsender_r;//最終的にpubされるmotorpw
 std_msgs::Int16 stpsender_a,stpsender_b;
+std_msgs::Float64 ex;
+
+void get_correction(){
+  //if(vlr_max == DELTA_L)extra_correction = motorpw_l * gap_ratio * SUPRESS_COR;
+  //else if(vlr_max == DELTA_R)extra_correction = motorpw_r * gap_ratio * SUPRESS_COR;
+
+  if(gap_ratio > 0){
+    if(mpwsender_l.data > 0 && mpwsender_r.data > 0){
+      if(extra_correction < 0)extra_correction = 0;
+      extra_correction += 1;
+    }else if(mpwsender_l.data < 0 && mpwsender_r.data < 0){
+      if(extra_correction > 0)extra_correction = 0;
+      extra_correction -= 1;
+    }
+  }
+}
 
 void set_motor_speed(int& motor_pw,int target_pw){//PID制御でmotorpwに積算する
   
@@ -111,6 +141,41 @@ void joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
   //}
 }
 
+int max(int l, int r){
+  if(l>0 && r>0){
+    if(l>=r){
+      vlr_max = DELTA_L;
+      return l;
+    }else{
+      vlr_max = DELTA_R;
+      return r;
+    }
+  }else if(l<0 && r<0){
+    if(l<=r){
+      vlr_max = DELTA_L;
+      return l;
+    }else{
+      vlr_max = DELTA_R;
+      return r;
+    }
+  }
+}
+
+void encCallback(const std_msgs::Int32MultiArray& lmr){
+  int vl = lmr.data[DELTA_L];
+  int vr = lmr.data[DELTA_R];
+  int gap = lmr.data[DGAP];
+
+  //ROS_INFO("encCallback");
+
+  if(vl == 0 || vr == 0){
+    gap_ratio = 0;
+    extra_correction = 0;
+  }else gap_ratio = (float)gap / (float)max(vl,vr);
+  
+  if(gap_ratio < 0)gap_ratio *= -1;
+  ex.data = extra_correction;
+}
 
 int main (int argc, char **argv){
   r_ispushed = 0;
@@ -118,16 +183,26 @@ int main (int argc, char **argv){
   ros::init(argc,argv,"nhk18_controller");
   ros::NodeHandle nh;
   ros::Subscriber joy = nh.subscribe("joy", 1000, joyCallback);
+  ros::Subscriber v_lmr = nh.subscribe("enc",1000, encCallback);
   ros::Publisher mr_pub = nh.advertise<std_msgs::Int16>("mr",1000);
   ros::Publisher ml_pub = nh.advertise<std_msgs::Int16>("ml",1000);
   ros::Publisher stpa_pub = nh.advertise<std_msgs::Int16>("stpa",1000);
   ros::Publisher stpb_pub = nh.advertise<std_msgs::Int16>("stpb",1000);
   ros::Rate loop_rate(10);
 
+  ros::Publisher extra = nh.advertise<std_msgs::Float64>("ex",1000);
+
   while(ros::ok()){
     set_motor_status();
     mpwsender_r.data = motorpw_r;
     mpwsender_l.data = motorpw_l;
+
+    get_correction();
+    extra.publish(ex);
+
+    if(vlr_max == DELTA_L)mpwsender_r.data += extra_correction;//補正
+    else if (vlr_max == DELTA_R)mpwsender_l.data += extra_correction;
+    
     if(l_ispushed == 0 && r_ispushed == 1){//L,Rボタンに応じて片方に寄る走行をさせる
       if(mpwsender_l.data >= 0)
 	mpwsender_l.data += (mpwsender_l.data * SUPRESS);
@@ -138,8 +213,8 @@ int main (int argc, char **argv){
       else mpwsender_r.data -= (mpwsender_r.data * SUPRESS);
     }
 
-    mr_pub.publish(mpwsender_l);
-    ml_pub.publish(mpwsender_r);
+    mr_pub.publish(mpwsender_r);
+    ml_pub.publish(mpwsender_l);
 
     ROS_INFO("L:%d",mpwsender_l.data);
     ROS_INFO("R:%d\n",mpwsender_r.data);
