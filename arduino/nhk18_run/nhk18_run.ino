@@ -40,13 +40,13 @@ void motorLCallBack(const std_msgs::Int16& pw){
   l = pw.data;
   if(l > 100)l = 100;
   else if(l < -100)l = -100;
-  mdl.setSpeed(l);
+  mdl.setSpeed(50);
 }
 void motorRCallBack(const std_msgs::Int16& pw){
   r = pw.data;
   if(r > 100)r = 100;
   else if(r < -100)r = -100;
-  mdr.setSpeed(r);
+  mdr.setSpeed(0);
 }
 
 ros::NodeHandle nh;
@@ -74,14 +74,15 @@ void setup(){
   encarr.data = (int32_t*)malloc(sizeof(int32_t*)*3);
   Wire.begin();
   nh.initNode();
-  nh.subscribe(ml);
-  nh.subscribe(mr);
+  //nh.subscribe(ml);
+  //nh.subscribe(mr);
   nh.advertise(enc_pub);
 }
 
 void loop() {
+  mdl.setSpeed(50);
   encoder();
   enc_pub.publish(&encarr);
   nh.spinOnce();
-  delay(100);
+  delay(10);
 }

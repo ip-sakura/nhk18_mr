@@ -14,8 +14,8 @@
 #define DELTA_R 1
 #define DGAP 2
 
-uint8_t addrr = 0x27;
-uint8_t addrl = 0x26;
+uint8_t addrr = 0x26;
+uint8_t addrl = 0x27;
 
 IseMotorDriver mdl = IseMotorDriver(addrl);
 IseMotorDriver mdr = IseMotorDriver(addrr);
@@ -36,20 +36,40 @@ motor_stats mr_stats = {0,0,0};
 
 std_msgs::Int16 l_minus_r_vgap;
 
+void cal(){
+  for(int i=1;i<5;i++){
+    
+    e1[i]=w[i]-enc[i]; 
+    e2[i]=e2[i]+e1[i];
+    e3[i]=e1[i]-e4[i];
+    e4[i]=e1[i];
+    pw[i]=p_gain*e1[i]+i_gain*e2[i]+d_gain*e3[i];
+    if(abs(pw[i])>100){
+      pw[i]=100*pw[i]/abs(pw[i]);
+    }
+    else{
+    }
+    // pw[i]=w[i];
+  }
+}
+
 void motorLCallBack(const std_msgs::Int16& pw){
   l = pw.data;
-  mdl.setSpeed(l);
+  if(l > 100)l = 100;
+  else if(l < -100)l = -100;
+  mdl.setSpeed(50);
 }
 void motorRCallBack(const std_msgs::Int16& pw){
   r = pw.data;
-  mdr.setSpeed(r);
+  if(r > 100)r = 100;
+  else if(r < -100)r = -100;
+  mdr.setSpeed(0);
 }
 
 ros::NodeHandle nh;
 ros::Subscriber<std_msgs::Int16>mr("mr",motorRCallBack);
 ros::Subscriber<std_msgs::Int16>ml("ml",motorLCallBack);
 ros::Publisher v_lmr_pub("v_lmr",&l_minus_r_vgap);
-
 
 
 void encoder(){
@@ -71,14 +91,15 @@ void setup(){
   encarr.data = (int32_t*)malloc(sizeof(int32_t*)*3);
   Wire.begin();
   nh.initNode();
-  nh.subscribe(ml);
-  nh.subscribe(mr);
+  //nh.subscribe(ml);
+  //nh.subscribe(mr);
   nh.advertise(enc_pub);
 }
 
 void loop() {
+  mdl.setSpeed(50);
   encoder();
   enc_pub.publish(&encarr);
   nh.spinOnce();
-  delay(100);
+  delay(10);
 }
