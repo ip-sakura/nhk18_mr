@@ -23,12 +23,15 @@
 #define DELTA_R 1
 #define DGAP 2
 
-#define THRESHOLD 0.5
+#define THRESHOLD 0.1
 #define TOPPOWER 80
+#define MINPOWER 50
+
 #define LRGAP 5 //壁伝い走行用の回転差
 #define STPX 150//ラックを持ち上げる際の変位（mm）
 #define SUPRESS 0.1
-#define SUPRESS_COR 0.15 //補正用サプレッサー
+#define SUPRESS_COR 0.5 //補正用サプレッサー
+#define SUPRESSER 1.0
 
 int status = STOP;//状態
 int status_buf = STOP;//直前の状態
@@ -51,11 +54,44 @@ std_msgs::Int16 mpwsender_l,mpwsender_r;//最終的にpubされるmotorpw
 std_msgs::Int16 stpsender_a,stpsender_b;
 std_msgs::Float64 ex;
 
-void get_correction(){
-  //if(vlr_max == DELTA_L)extra_correction = motorpw_l * gap_ratio * SUPRESS_COR;
-  //else if(vlr_max == DELTA_R)extra_correction = motorpw_r * gap_ratio * SUPRESS_COR;
+void set_motor_speed(int& motor_pw,int target_pw){//PID制御でmotorpwに積算する
+  
+  /* int gap = delta * (target_pw - motor_pw);
+  if(gap == 0){
+    if(target_pw-motor_pw > 0)gap = 1;
+    else if (target_pw-motor_pw < 0)gap = -1;
+    else gap = 0;
+  }
+  
+  motor_pw += gap;*/
+}
 
-  if(gap_ratio > 0){
+void get_correction(){
+  /*if(motorpw_l>0){
+    if(gap_ratio > 0){
+      extra_correction--;
+    }else{
+      extra_correction++;
+    }
+  }else if(motorpw_l<0){
+    if(gap_ratio > 0){
+      extra_correction++;
+    }else{
+      extra_correction--;
+    }
+    }*/
+  
+    /*if(vlr_max == DELTA_L){
+      //set_correction(extra_correction,-(int)(motorpw_l * gap_ratio));
+      extra_correction--;
+    }else if(vlr_max == DELTA_R){
+      //set_correction(extra_correction,(int)motorpw_r * gap_ratio);
+      extra_correction++;
+      }*/
+    
+  
+
+  /*if(gap_ratio > 0){
     if(mpwsender_l.data > 0 && mpwsender_r.data > 0){
       if(extra_correction < 0)extra_correction = 0;
       extra_correction += 1;
@@ -63,19 +99,7 @@ void get_correction(){
       if(extra_correction > 0)extra_correction = 0;
       extra_correction -= 1;
     }
-  }
-}
-
-void set_motor_speed(int& motor_pw,int target_pw){//PID制御でmotorpwに積算する
-  
-  int gap = delta * (target_pw - motor_pw);
-  if(gap == 0){
-    if(target_pw-motor_pw > 0)gap = 1;
-    else if (target_pw-motor_pw < 0)gap = -1;
-    else gap = 0;
-  }
-  
-  motor_pw += gap;
+    }*/
 }
 
 void set_stp_move(){//mm単位でどれだけ回すかmsgsに格納
@@ -95,7 +119,7 @@ void set_stp_move(){//mm単位でどれだけ回すかmsgsに格納
 
 
 void set_motor_status(){//statusに応じてmotorpwを変化させる
-  if(cnt == span_ms){
+  /*if(cnt == span_ms){
     if(status == FORWARD){
       set_motor_speed(motorpw_l,TOPPOWER);
       set_motor_speed(motorpw_r,TOPPOWER);
@@ -108,16 +132,22 @@ void set_motor_status(){//statusに応じてmotorpwを変化させる
     }
     cnt = 0;
   }
-  cnt++;
+  cnt++;*/
 }
 
 void joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
   if(joy->axes[1] >= THRESHOLD){
     status = FORWARD;
+    motorpw_l = joy->axes[1] * 100 * SUPRESSER;
+    motorpw_r = joy->axes[1] * 100 * SUPRESSER;
   }else if(joy->axes[1] <= -THRESHOLD){
     status = BACK;
+    motorpw_l = joy->axes[1] * 100 * SUPRESSER;
+    motorpw_r = joy->axes[1] * 100 * SUPRESSER;
   }else{
     status = STOP;
+    motorpw_l = 0;
+    motorpw_r = 0;
   }
 
   if(joy->buttons[5]){//Rボタン（右寄り走行）
@@ -162,7 +192,7 @@ int max(int l, int r){
 }
 
 void encCallback(const std_msgs::Int32MultiArray& lmr){
-  int vl = lmr.data[DELTA_L];
+  /*int vl = lmr.data[DELTA_L];
   int vr = lmr.data[DELTA_R];
   int gap = lmr.data[DGAP];
 
@@ -173,8 +203,8 @@ void encCallback(const std_msgs::Int32MultiArray& lmr){
     extra_correction = 0;
   }else gap_ratio = (float)gap / (float)max(vl,vr);
   
-  if(gap_ratio < 0)gap_ratio *= -1;
-  ex.data = extra_correction;
+  //if(gap_ratio < 0)gap_ratio *= -1;
+  ex.data = extra_correction;*/
 }
 
 int main (int argc, char **argv){
@@ -188,20 +218,22 @@ int main (int argc, char **argv){
   ros::Publisher ml_pub = nh.advertise<std_msgs::Int16>("ml",1000);
   ros::Publisher stpa_pub = nh.advertise<std_msgs::Int16>("stpa",1000);
   ros::Publisher stpb_pub = nh.advertise<std_msgs::Int16>("stpb",1000);
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(50);
 
   ros::Publisher extra = nh.advertise<std_msgs::Float64>("ex",1000);
 
   while(ros::ok()){
-    set_motor_status();
+    //set_motor_status();
     mpwsender_r.data = motorpw_r;
     mpwsender_l.data = motorpw_l;
 
-    get_correction();
-    extra.publish(ex);
+    //get_correction();
+    //extra.publish(ex);
 
-    if(vlr_max == DELTA_L)mpwsender_r.data += extra_correction;//補正
-    else if (vlr_max == DELTA_R)mpwsender_l.data += extra_correction;
+    //mpwsender_l.data += extra_correction;
+
+    //if(vlr_max == DELTA_L)mpwsender_r.data += extra_correction;//補正
+    //else if (vlr_max == DELTA_R)mpwsender_l.data += extra_correction;
     
     if(l_ispushed == 0 && r_ispushed == 1){//L,Rボタンに応じて片方に寄る走行をさせる
       if(mpwsender_l.data >= 0)
