@@ -1,12 +1,9 @@
 <launch>
-    <node pkg = "nhk18_mr" name = "controller" type = "nhk18_controller"/>
+    <node pkg = "nhk18_mr" name = "controller" type = "nhk18_mr"/>
     <node pkg = "rosserial_python" type = "serial_node.py" name = "nhk18_mr_stp">
       <param name = "port" type = "string" value = "/dev/ttyUSB0"/>
     </node>
     <node pkg = "rosserial_python" type = "serial_node.py" name = "nhk18_mr_run">
-      <param name = "port" type = "string" value = "/dev/ttyACM1"/>
-    </node>
-    <node pkg="joy" type="joy_node" name="joy">
-      <param name="dev" type="string" value="/dev/input/js2"/>
+      <param name = "port" type = "string" value = "/dev/ttyACM0"/>
     </node>
 </launch>
