@@ -19,6 +19,8 @@
 
 #define MOTOR_L 1
 #define MOTOR_R 2
+#define CORRECTION 10
+#define FINTHRESH 1
 
 volatile double pw[5]={0,0,0,0,0},targetSpeed[6]={0,0,0,0,0,0};
 double speed[5]={}, n=90;
@@ -30,6 +32,8 @@ static int h=0,l=0;
 long plus=2000000000;
 long minus=-2000000000;
 int state=0;
+
+long enc_buf_l,enc_buf_r = 0;
 
 uint8_t addr1 = 0x26;
 uint8_t addr2 = 0x27;
@@ -129,8 +133,22 @@ void loop()
   if (count == 0){
   encorder();
   cal();
-  m1.setSpeed(-1*int(pw[1]));
-  m2.setSpeed(int(pw[2]));
+
+  if (pw[1] != 0 || pw[2] != 0){
+    m1.setSpeed(-1*int(pw[1]));
+    m2.setSpeed(int(pw[2]));
+  }else if(pw[1] == 0 && pw[2] == 0){
+    if(speed[1] < -FINTHRESH && speed[2] < -FINTHRESH){
+      m1.setSpeed(-CORRECTION);
+      m2.setSpeed(CORRECTION);
+    }else if(speed[1] > FINTHRESH && speed[2] > FINTHRESH){
+      m1.setSpeed(CORRECTION);
+      m2.setSpeed(-CORRECTION);
+    }else{
+      m1.setSpeed(0);
+      m2.setSpeed(0);
+    }
+  }
   
   count = 1;
   }
