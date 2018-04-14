@@ -27,17 +27,20 @@
 #define TOPPOWER 80
 #define MINPOWER 50
 
-#define LRGAP 5 //壁伝い走行用の回転差
-#define STPX 150//ラックを持ち上げる際の変位（mm）
-#define SUPRESS 0.1
-#define SUPRESS_COR 0.5 //補正用サプレッサー
-#define SUPRESSER 1.0
+#define L_OR_R_PLUS 5//Lbutton Rbutton ni taiou addition
+
+#define STP0 10 //ステピ初期位置
+#define STPX 150 - STP0//ラックを持ち上げる際の変位（mm）
+
+#define SUPRESS 0.1//使わない
+#define SUPRESS_COR 0.5 //補正用サプレッサー 使わない
+#define SUPRESSER 0.15//コントローラーからの出力にかけてarduinoに渡す
 
 int status = STOP;//状態
 int status_buf = STOP;//直前の状態
 int stp_status = STOP;//ステピの状態
 int stp_status_buf = STOP;//直前のステピの状態
-int r_ispushed,l_ispushed;
+int r_ispushed,l_ispushed,a_ispushed;
 int sw = 0;
 int span_ms = 1;//速度？積算のタイムスパン
 int cnt = 0;//タイムスパン用カウンタ
@@ -115,6 +118,11 @@ void set_stp_move(){//mm単位でどれだけ回すかmsgsに格納
   //stpsender_a.data = 0;
   //stpsender_b.data = 0;
   //ROS_INFO("stp stop");
+
+  if(a_ispushed){
+    stpsender_a.data = STP0;
+    a_ispushed = 0;
+  }
 }
 
 
@@ -169,6 +177,11 @@ void joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
   }//else {
   //stp_status = STOP;
   //}
+
+  if(joy->buttons[0]){
+    a_ispushed = 1;
+  }
+    
 }
 
 int max(int l, int r){
@@ -228,7 +241,7 @@ int main (int argc, char **argv){
     mpwsender_l.data = motorpw_l;
 
     //get_correction();
-    //extra.publish(ex);
+    extra.publish(ex);
 
     //mpwsender_l.data += extra_correction;
 
@@ -236,13 +249,13 @@ int main (int argc, char **argv){
     //else if (vlr_max == DELTA_R)mpwsender_l.data += extra_correction;
     
     if(l_ispushed == 0 && r_ispushed == 1){//L,Rボタンに応じて片方に寄る走行をさせる
-      if(mpwsender_l.data >= 0)
-	mpwsender_l.data += (mpwsender_l.data * SUPRESS);
-      else mpwsender_l.data -= (mpwsender_l.data * SUPRESS);
-    }else if(l_ispushed == 1 && r_ispushed == 0){
       if(mpwsender_r.data >= 0)
-	mpwsender_r.data += (mpwsender_r.data * SUPRESS);
-      else mpwsender_r.data -= (mpwsender_r.data * SUPRESS);
+	mpwsender_r.data += L_OR_R_PLUS;//(mpwsender_l.data * SUPRESS);
+      else mpwsender_r.data -= L_OR_R_PLUS;//(mpwsender_l.data * SUPRESS);
+    }else if(l_ispushed == 1 && r_ispushed == 0){
+      if(mpwsender_l.data >= 0)
+	mpwsender_l.data += L_OR_R_PLUS;//(mpwsender_r.data * SUPRESS);
+      else mpwsender_l.data -= L_OR_R_PLUS * 3;//(mpwsender_r.data * SUPRESS);
     }
 
     mr_pub.publish(mpwsender_r);

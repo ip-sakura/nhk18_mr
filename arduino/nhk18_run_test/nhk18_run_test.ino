@@ -17,7 +17,14 @@ void setup(){
 }
 
 void loop() {
-  mdl.setSpeed(50);
-  Serial.println(mdl.encorder());
+  mdr.setSpeed(50);
+  int a = mdr.encorder();
+  int c = mdl.encorder();
+  delay(10);
+  int b = mdr.encorder();
+  int d = mdl.encorder();
+  Serial.print(b-a);
+  Serial.print(":");
+  Serial.println(d-c);
   delay(10);
 }

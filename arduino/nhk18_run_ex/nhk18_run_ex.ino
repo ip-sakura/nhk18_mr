@@ -22,7 +22,7 @@
 
 volatile int pw[5]={0,0,0,0,0},w[6]={0,0,0,0,0,0};
 long enc[5]={},Enc[5]={},Enc_a[5]={},Enc_b[5]={},n=5;///18000
-double p_gain=0.01,i_gain=0,d_gain=0,e1[5]={},e2[5]={},e3[5]={},e4[5]={};
+double p_gain=1.0,i_gain=0.1,d_gain=0.1,e1[5]={},e2[5]={},e3[5]={},e4[5]={};
 //0.95 2.4 0.4
 static int h=0,l=0;
 long plus=2000000000;
