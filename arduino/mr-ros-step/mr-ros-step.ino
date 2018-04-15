@@ -27,9 +27,13 @@
 
 #define DIRPIN_B 5
 
+#define BOTH 0
+#define ONLY_A 1
+#define ONLY_B 2
 volatile int input_pulse = 0;
 
 ros::NodeHandle nh;
+int join = 0;
 
 void stpaCallback(const std_msgs::Int16& a){
      
@@ -37,9 +41,12 @@ void stpaCallback(const std_msgs::Int16& a){
      
      
 }
-
+void stpJoinCallback(const std_msgs::Int16& j){
+     join = j.data;
+     
+}
 ros::Subscriber<std_msgs::Int16> stpa("stpa",stpaCallback);
-
+ros::Subscriber<std_msgs::Int16>stpa_join_sub("stp_join",stpJoinCallback);
 void pulse(){
   
   static  boolean output = HIGH;
@@ -54,6 +61,21 @@ void pulse(){
     
     
   
+  }
+
+  void pulse_A(){
+    static boolean output_A = HIGH;
+
+    digitalWrite(PULSEPIN_A,output_A);
+
+    output_A = !output_A;
+  }
+
+  void pulse_B(){
+    static boolean output_B = HIGH;
+
+    digitalWrite(PULSEPIN_B,output_B);
+    output_B = !output_B;
   }
 
 
@@ -125,9 +147,126 @@ void test(int b){
 
 }
 
+void test_A(int b){
+  int i,j = 0;
+     static int count_A = 0;
+
+     if(b>=0){
+      Serial.print("+");
+      
+      digitalWrite(DIRPIN_A,LOW);
+      
+      
+      pulse_A();
+
+      count_A++;
+  
+     
+      
+      
+      }
+
+     if(b<0){
+      Serial.print("-");
+      b= -b;
+      digitalWrite(DIRPIN_A,HIGH);
+      
+      
+      pulse_A();
+  
+      count_A++;
+      
+      
+      }
+
+     if(count_A>b*2){
+      
+      count_A = 0;
+
+      while(1){
+        nh.spinOnce();
+
+        static int num2_A = 0;
+        int num1_A = input_pulse;
+
+        if(num1_A != num2_A ){
+          num2_A = num1_A;
+
+          break;
+          
+          }
+        
+        num2_A = num1_A;
+        
+        
+        }
+      
+      
+     
+     }
+}
 
 
 
+
+void test_B(int b){
+  int i,j = 0;
+     static int count_B = 0;
+
+     if(b>=0){
+      Serial.print("+");
+      
+      digitalWrite(DIRPIN_B,LOW);
+      
+      
+      pulse_B();
+
+      count_B++;
+  
+     
+      
+      
+      }
+
+     if(b<0){
+      Serial.print("-");
+      b= -b;
+      digitalWrite(DIRPIN_B,HIGH);
+      
+      
+      pulse_B();
+  
+      count_B++;
+      
+      
+      }
+
+     if(count_B>b*2){
+      
+      count_B = 0;
+
+      while(1){
+        nh.spinOnce();
+
+        static int num2_B = 0;
+        int num1_B = input_pulse;
+
+        if(num1_B != num2_B ){
+          num2_B = num1_B;
+
+          break;
+          
+          }
+        
+        num2_B = num1_B;
+        
+        
+        }
+      
+      
+     
+      }
+}
 
 
 
@@ -144,12 +283,12 @@ void setup(){
   digitalWrite(DIRPIN_B,HIGH);
   digitalWrite(PULSEPIN_B,LOW);
   Serial.begin(9600);
-
   
   
   nh.initNode();
 
   nh.subscribe(stpa);
+  nh.subscribe(stpa_join_sub);
 
 
 }
@@ -159,10 +298,17 @@ void setup(){
 void loop(){
   Serial.print(1);
 
-  test(input_pulse);
+
+  if(join == 0){
+    test(input_pulse);
+  }else if(join == 1){
+    test_A(input_pulse);
+  }else if(join == 2){
+    test_B(input_pulse);
+  }
 
 
-  delayMicroseconds(1500);
+  delayMicroseconds(1400);
 
   nh.spinOnce();
 

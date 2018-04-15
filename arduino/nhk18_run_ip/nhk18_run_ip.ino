@@ -8,7 +8,7 @@
 #include <std_msgs/Int8.h>
 #include <std_msgs/Int32MultiArray.h>
 #include <std_msgs/Int16.h>
-#include <stdlib.h>
+#include <Servo.h>
 #include <std_msgs/MultiArrayLayout.h>
 #include <std_msgs/MultiArrayDimension.h>
 #include <Wire.h>
@@ -21,6 +21,20 @@
 #define MOTOR_R 2
 #define CORRECTION 10
 #define FINTHRESH 1
+
+#define SERVO_PIN 7
+//#define SERVO_RED_PIN 7
+//#define SERVO_BLUE_PIN 6
+
+#define HIDE_BOTH 0
+#define SHOW_RED 1
+#define SHOW_BLUE 2
+
+#define SHOW_RED_NUM 90
+#define SHOW_BLUE_NUM 50
+#define SHOW_BOTH_NUM 160
+
+Servo hand_red,hand_blue,hand;
 
 volatile double pw[5]={0,0,0,0,0},targetSpeed[6]={0,0,0,0,0,0};
 double speed[5]={}, n=90;
@@ -55,8 +69,19 @@ void motorRCallBack(const std_msgs::Int16& msg){
   targetSpeed[MOTOR_R] = msg.data;
 }
 
+void servoCallBack(const std_msgs::Int16& srv){
+  /*if(srv.data == 0){
+    hand.write(SHOW_BLUE_NUM);
+  }else if(srv.data == 1){
+    hand.write(SHOW_BOTH_NUM);
+  }else if(srv.data == 2){
+    hand.write(SHOW_RED_NUM);
+  }*/
+}
+
 ros::Subscriber<std_msgs::Int16>mr("mr",motorRCallBack);
 ros::Subscriber<std_msgs::Int16>ml("ml",motorLCallBack);
+ros::Subscriber<std_msgs::Int16>servo("servo",servoCallBack);
 
 void encorder(){
       
@@ -124,6 +149,10 @@ void setup()
   nh.advertise(enc_pub);
   nh.subscribe(ml);
   nh.subscribe(mr);
+  nh.subscribe(servo);
+  //hand.attach(SERVO_PIN);
+  //hand_red.attach(SERVO_RED_PIN);
+  //hand_blue.attach(SERVO_BLUE_PIN);
 }
 
 int count = 0;
